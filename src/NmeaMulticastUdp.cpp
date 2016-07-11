@@ -146,11 +146,32 @@ bool NmeaMulticastUdp::recvString(std::string& sourceId, std::string& nmea) {
 }
 
 bool NmeaMulticastUdp::startListening() {
+	Dout(dbg_multicast, "NmeaMulticastUdp::startListening >>>>");
+	bool ret = false;
 
+	if (!pimpl->active && pimpl->listener) {
+		if (pimpl->multicast->open()) {
+			pimpl->active = true;
+			ret = true;
+
+			thread t(bind(&NmeaMulticastUdp::runListener, this));
+			pimpl->listenerThread.swap(t);
+			Dout(dbg_multicast, "NmeaMulticastUdp::startListening se inicia hilo");
+		}
+	}
+	Dout(dbg_multicast, "NmeaMulticastUdp::startListening <<<<");
+	return ret;
 }
 
 void NmeaMulticastUdp::stopListening() {
-
+	Dout(dbg_multicast, "NmeaMulticastUdp::stopListening >>>>");
+	if (pimpl->active) {
+		pimpl->active = false;
+		pimpl->listenerThread.join();
+		pimpl->multicast->close();
+		Dout(dbg_multicast, "NmeaMulticastUdp::stopListening: se liberó hilo");
+	}
+	Dout(dbg_multicast, "NmeaMulticastUdp::stopListening <<<<");
 }
 
 void NmeaMulticastUdp::runListener() {
