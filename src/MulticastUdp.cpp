@@ -45,7 +45,8 @@ MulticastUdp::MulticastUdp(const MulticastUdp& obj) :
 }
 
 MulticastUdp::MulticastUdp(const std::string& interfaceAddress,
-		const std::string& multicastAddress, int multicastPort, int timeout) {
+		const std::string& multicastAddress, int multicastPort, int timeout) :
+		pimpl { new impl } {
 
 	pimpl->fd = -1;
 	pimpl->active = false;
@@ -57,14 +58,12 @@ MulticastUdp::MulticastUdp(const std::string& interfaceAddress,
 	} else {
 		pimpl->interface.sin_addr.s_addr = INADDR_ANY;
 	}
-	memset(pimpl->interface.sin_zero, '\0',
-			sizeof(pimpl->interface.sin_zero));
+	memset(pimpl->interface.sin_zero, '\0', sizeof(pimpl->interface.sin_zero));
 
 	pimpl->multicast.sin_family = AF_INET;
 	pimpl->multicast.sin_port = htons(multicastPort);
 	inet_aton(multicastAddress.c_str(), &pimpl->multicast.sin_addr);
-	memset(pimpl->multicast.sin_zero, '\0',
-			sizeof(pimpl->multicast.sin_zero));
+	memset(pimpl->multicast.sin_zero, '\0', sizeof(pimpl->multicast.sin_zero));
 
 	struct in_addr multicastmask;
 	inet_aton(MULTICAST_MASK.c_str(), &multicastmask);
@@ -108,8 +107,7 @@ bool MulticastUdp::open() {
 			int bindret;
 
 			// Dirección mutlticast
-			bindret = ::bind(pimpl->fd,
-					(struct sockaddr *) &pimpl->multicast,
+			bindret = ::bind(pimpl->fd, (struct sockaddr *) &pimpl->multicast,
 					sizeof(pimpl->multicast));
 
 			if (bindret == 0) {
@@ -150,7 +148,8 @@ bool MulticastUdp::open() {
 					sndbuffer = sndbuffer >> 1;
 				}
 
-				Dout(dbg_multicast, "UdpSocket::open rcvbuffer = " << rcvbuffer << "b sndbuffer = " << sndbuffer << "b");
+				Dout(dbg_multicast,
+						"UdpSocket::open rcvbuffer = " << rcvbuffer << "b sndbuffer = " << sndbuffer << "b");
 
 				ret = true;
 			} else {
@@ -165,63 +164,58 @@ bool MulticastUdp::open() {
 
 	if (false == ret && pimpl->fd >= 0) {
 		Dout(dbg_multicast, "Error al abrir socket. Cerrando");
-		::close (pimpl->fd);
+		::close(pimpl->fd);
 		pimpl->fd = -1;
 	}
 
 	return ret;
 }
 
-bool MulticastUdp::close()
-{
-    bool ret = false;
+bool MulticastUdp::close() {
+	bool ret = false;
 
-    Dout(dbg_multicast, "UdpSocket close()");
+	Dout(dbg_multicast, "UdpSocket close()");
 
-    if (isOpen())
-    {
-        if (pimpl->active)
-        {
-            stopListening();
-        }
-        ::close(pimpl->fd);
-        pimpl->fd = -1;
-        ret = true;
-        Dout(dbg_multicast, "Socket cerrado");
-    }
+	if (isOpen()) {
+		if (pimpl->active) {
+			stopListening();
+		}
+		::close(pimpl->fd);
+		pimpl->fd = -1;
+		ret = true;
+		Dout(dbg_multicast, "Socket cerrado");
+	}
 
-    return ret;
+	return ret;
 }
 
-bool MulticastUdp::isOpen()
-{
-    return (pimpl->fd >= 0);
+bool MulticastUdp::isOpen() {
+	return (pimpl->fd >= 0);
 }
 
-int MulticastUdp::send(boost::asio::const_buffer buffer)
-{
-    return ::sendto(pimpl->fd, asio::buffer_cast<const void *>(buffer), asio::buffer_size(buffer), 0,
-            (struct sockaddr *) &pimpl->multicast, sizeof(pimpl->multicast));
+int MulticastUdp::send(boost::asio::const_buffer buffer) {
+	return ::sendto(pimpl->fd, asio::buffer_cast<const void *>(buffer),
+			asio::buffer_size(buffer), 0, (struct sockaddr *) &pimpl->multicast,
+			sizeof(pimpl->multicast));
 }
 
-int MulticastUdp::recv(asio::mutable_buffer buffer)
-{
-    static fd_set readset;
-    FD_ZERO(&readset);
-    FD_SET(pimpl->fd, &readset);
+int MulticastUdp::recv(asio::mutable_buffer buffer) {
+	static fd_set readset;
+	FD_ZERO(&readset);
+	FD_SET(pimpl->fd, &readset);
 
-    timeval timeout = pimpl->timeout;
+	timeval timeout = pimpl->timeout;
 
-    int ret = select(pimpl->fd + 1, &readset, NULL, NULL, &timeout);
+	int ret = select(pimpl->fd + 1, &readset, NULL, NULL, &timeout);
 
-    if (ret  > 0)
-    {
-        ret = ::recvfrom(pimpl->fd, asio::buffer_cast<void *>(buffer), asio::buffer_size(buffer), 0, NULL, NULL);
-    } else {
-        ret = -2;
-    }
+	if (ret > 0) {
+		ret = ::recvfrom(pimpl->fd, asio::buffer_cast<void *>(buffer),
+				asio::buffer_size(buffer), 0, NULL, NULL);
+	} else {
+		ret = -2;
+	}
 
-    return ret;
+	return ret;
 }
 
 void MulticastUdp::setListener(std::shared_ptr<MulticastUdpListener> listener) {
@@ -254,22 +248,20 @@ void MulticastUdp::stopListening() {
 	}
 }
 
-void MulticastUdp::runListener()
-{
+void MulticastUdp::runListener() {
 	asio::mutable_buffer b(pimpl->readBuffer, MAX_BUFFER_SIZE);
 
-    while (pimpl->active)
-    {
-        int ret = recv(b);
+	while (pimpl->active) {
+		int ret = recv(b);
 
-        if (ret > 0)
-        {
-        	pimpl->listener->onDataAvailable(asio::buffer_cast<const char *>(b), ret);
-        } else if (ret == -2) {
-        	pimpl->listener->onTimeout();
-        } else {
-        	pimpl->listener->onConnectionError();
-        }
-    }
+		if (ret > 0) {
+			pimpl->listener->onDataAvailable(asio::buffer_cast<const char *>(b),
+					ret);
+		} else if (ret == -2) {
+			pimpl->listener->onTimeout();
+		} else {
+			pimpl->listener->onConnectionError();
+		}
+	}
 
 }
