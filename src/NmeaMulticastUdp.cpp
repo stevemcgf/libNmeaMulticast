@@ -100,28 +100,26 @@ bool NmeaMulticastUdp::sendString(const std::string& sourceId,
 
 	int& messageCounter = pimpl->messageCounter[sourceId];
 
-
 	std::stringstream tagBlockss;
 	tagBlockss << "s:" << sourceId;
 	tagBlockss << ",n:" << messageCounter;
 
 	++messageCounter;
-	if (messageCounter == 1000)
-	{
+	if (messageCounter == 1000) {
 		messageCounter = 1;
 	}
 
 	int16_t checksum = calculateNmeaChecksum(tagBlockss.str());
 
-	tagBlockss << "*" << std::hex << std::uppercase << std::setfill('0') << std::setw(2) << checksum;
+	tagBlockss << "*" << std::hex << std::uppercase << std::setfill('0')
+			<< std::setw(2) << checksum;
 
 	std::string tagBlock = tagBlockss.str();
 
 	pimpl->writebuffer[pointer] = '\\';
 	++pointer;
 
-	for (auto c : tagBlock)
-	{
+	for (auto c : tagBlock) {
 		pimpl->writebuffer[pointer] = c;
 		++pointer;
 	}
@@ -129,8 +127,7 @@ bool NmeaMulticastUdp::sendString(const std::string& sourceId,
 	pimpl->writebuffer[pointer] = '\\';
 	++pointer;
 
-	for (auto c : nmea)
-	{
+	for (auto c : nmea) {
 		pimpl->writebuffer[pointer] = c;
 		++pointer;
 	}
@@ -140,18 +137,29 @@ bool NmeaMulticastUdp::sendString(const std::string& sourceId,
 	pimpl->writebuffer[pointer] = '\n';
 	++pointer;
 
-	return (pimpl->multicast->send(asio::const_buffer(pimpl->writebuffer, pointer)) > 0);
+	return (pimpl->multicast->send(
+			asio::const_buffer(pimpl->writebuffer, pointer)) > 0);
 }
 
 bool NmeaMulticastUdp::recvString(std::string& sourceId, std::string& nmea) {
 	return false;
 }
 
-int16_t NmeaMulticastUdp::calculateNmeaChecksum(const std::string& nmeaStr)
-{
+bool NmeaMulticastUdp::startListening() {
+
+}
+
+void NmeaMulticastUdp::stopListening() {
+
+}
+
+void NmeaMulticastUdp::runListener() {
+
+}
+
+int16_t NmeaMulticastUdp::calculateNmeaChecksum(const std::string& nmeaStr) {
 	int16_t checksum = 0;
-	for (auto c : nmeaStr)
-	{
+	for (auto c : nmeaStr) {
 		checksum ^= c;
 	}
 	return checksum;
