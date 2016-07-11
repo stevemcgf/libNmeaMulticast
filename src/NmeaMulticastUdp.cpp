@@ -35,10 +35,10 @@ std::unordered_map<NmeaTrasmissionGroupEnum, std::pair<std::string, int>,
 using namespace boost;
 
 const int defaultTimeout = 1000;
-const int readBufferSize = 4096;
+const int multicastBufferSize = 4096;
 const int nmeaStringMaxSize = 2048;
 
-char DatagramHeader[6] = {'U', 'd', 'P', 'b', 'C', '\0'};
+char DatagramHeader[6] = { 'U', 'd', 'P', 'b', 'C', '\0' };
 
 class NmeaMulticastUdp::impl {
 public:
@@ -46,12 +46,14 @@ public:
 
 	std::shared_ptr<MulticastUdp> multicast;
 
+	std::unordered_map<std::string, int> messageCounter;
+
 	thread listenerThread;
 	std::shared_ptr<MulticastUdpListener> listener;
 
-	char readbuffer[readBufferSize];
+	char readbuffer[multicastBufferSize];
+	char writebuffer[multicastBufferSize];
 	char nmeaBuffer[nmeaStringMaxSize + 16];
-	char writebuffer[nmeaStringMaxSize + 16];
 };
 
 NmeaMulticastUdp::NmeaMulticastUdp(const NmeaMulticastUdp& obj) :
@@ -85,12 +87,72 @@ bool NmeaMulticastUdp::isOpen() {
 	return pimpl->multicast->isOpen();
 }
 
-bool NmeaMulticastUdp::sendString(const std::string& sourceId, const std::string& nmea)
-{
-
+void NmeaMulticastUdp::registerSystemId(const std::string& sourceId) {
+	pimpl->messageCounter[sourceId] = 1;
 }
 
-bool NmeaMulticastUdp::recvString(std::string& sourceId, std::string& nmea)
-{
+bool NmeaMulticastUdp::sendString(const std::string& sourceId,
+		const std::string& nmea) {
+	int pointer = 0;
+	memcpy(&pimpl->writebuffer[pointer], DatagramHeader,
+			sizeof(DatagramHeader));
+	pointer += sizeof(DatagramHeader);
 
+	int& messageCounter = pimpl->messageCounter[sourceId];
+
+
+	std::stringstream tagBlockss;
+	tagBlockss << "s:" << sourceId;
+	tagBlockss << ",n:" << messageCounter;
+
+	++messageCounter;
+	if (messageCounter == 1000)
+	{
+		messageCounter = 1;
+	}
+
+	int16_t checksum = calculateNmeaChecksum(tagBlockss.str());
+
+	tagBlockss << "*" << std::hex << std::uppercase << std::setfill('0') << std::setw(2) << checksum;
+
+	std::string tagBlock = tagBlockss.str();
+
+	pimpl->writebuffer[pointer] = '\\';
+	++pointer;
+
+	for (auto c : tagBlock)
+	{
+		pimpl->writebuffer[pointer] = c;
+		++pointer;
+	}
+
+	pimpl->writebuffer[pointer] = '\\';
+	++pointer;
+
+	for (auto c : nmea)
+	{
+		pimpl->writebuffer[pointer] = c;
+		++pointer;
+	}
+
+	pimpl->writebuffer[pointer] = '\r';
+	++pointer;
+	pimpl->writebuffer[pointer] = '\n';
+	++pointer;
+
+	return (pimpl->multicast->send(asio::const_buffer(pimpl->writebuffer, pointer)) > 0);
+}
+
+bool NmeaMulticastUdp::recvString(std::string& sourceId, std::string& nmea) {
+	return false;
+}
+
+int16_t NmeaMulticastUdp::calculateNmeaChecksum(const std::string& nmeaStr)
+{
+	int16_t checksum = 0;
+	for (auto c : nmeaStr)
+	{
+		checksum ^= c;
+	}
+	return checksum;
 }

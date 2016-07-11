@@ -52,6 +52,8 @@ private:
 
     void runListener();
 
+    int16_t calculateNmeaChecksum(const std::string& nmeaStr);
+
 };
 
 #endif /* SRC_NMEAMULTICASTUDP_H_ */
