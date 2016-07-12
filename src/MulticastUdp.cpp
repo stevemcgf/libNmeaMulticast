@@ -124,7 +124,7 @@ bool MulticastUdp::open() {
 				}
 
 				Dout(dbg_multicast, "Habilita IP_MULTICAST_LOOP");
-				u_char loop = 1;
+				char loop = 1;
 				if (setsockopt(pimpl->fd, IPPROTO_IP, IP_MULTICAST_LOOP, &loop,
 						sizeof(loop)) != 0) {
 					PErr("No se pudo Habilitar loop");
