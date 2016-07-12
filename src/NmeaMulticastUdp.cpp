@@ -7,9 +7,12 @@
 
 #include "NmeaMulticastUdp.h"
 
+#include "NmeaMulticastUdpListener.h"
+
 #include "MulticastUdp.h"
 
 #include <unordered_map>
+#include <boost/tokenizer.hpp>
 #include <boost/thread.hpp>
 
 #include "debug.hpp"
@@ -49,11 +52,10 @@ public:
 	std::unordered_map<std::string, int> messageCounter;
 
 	thread listenerThread;
-	std::shared_ptr<MulticastUdpListener> listener;
+	std::shared_ptr<NmeaMulticastUdpListener> listener;
 
 	char readbuffer[multicastBufferSize];
 	char writebuffer[multicastBufferSize];
-	char nmeaBuffer[nmeaStringMaxSize + 16];
 };
 
 NmeaMulticastUdp::NmeaMulticastUdp(const NmeaMulticastUdp& obj) :
@@ -142,7 +144,34 @@ bool NmeaMulticastUdp::sendString(const std::string& sourceId,
 }
 
 bool NmeaMulticastUdp::recvString(std::string& sourceId, std::string& nmea) {
-	return false;
+	bool ret = false;
+
+	int len = pimpl->multicast->recv(
+			asio::mutable_buffer(pimpl->readbuffer, multicastBufferSize));
+
+	if (len > 0) {
+		if (memcmp(pimpl->readbuffer, DatagramHeader, sizeof(DatagramHeader))
+				== 0) {
+			std::string nmeaBlocks(&pimpl->readbuffer[sizeof(DatagramHeader)], len - sizeof(DatagramHeader));
+			std::vector<std::string> nmeaBlocksList;
+
+			const boost::char_separator<char> sep("\\\r\n");
+			const boost::tokenizer<boost::char_separator<char>> t(nmeaBlocks.begin(), nmeaBlocks.end(), sep);
+
+			int count = 0;
+			for (auto& token : t)
+			{
+				if (count == 0)
+				{
+					// FIXME: Se asume que la cadena es "s:ID0001,n:11*cc"
+					sourceId = token.substr(2, 6);
+				} else {
+					nmea = token;
+				}
+			}
+		}
+	}
+	return ret;
 }
 
 bool NmeaMulticastUdp::startListening() {
@@ -156,7 +185,8 @@ bool NmeaMulticastUdp::startListening() {
 
 			thread t(bind(&NmeaMulticastUdp::runListener, this));
 			pimpl->listenerThread.swap(t);
-			Dout(dbg_multicast, "NmeaMulticastUdp::startListening se inicia hilo");
+			Dout(dbg_multicast,
+					"NmeaMulticastUdp::startListening se inicia hilo");
 		}
 	}
 	Dout(dbg_multicast, "NmeaMulticastUdp::startListening <<<<");
@@ -175,6 +205,17 @@ void NmeaMulticastUdp::stopListening() {
 }
 
 void NmeaMulticastUdp::runListener() {
+	std::string sourceId;
+	std::string nmeaStr;
+
+	while (pimpl->active) {
+		if (recvString(sourceId, nmeaStr))
+		{
+			pimpl->listener->onStringAvailable(sourceId, nmeaStr);
+		} else {
+			pimpl->listener->onTimeout();
+		}
+	}
 
 }
 
