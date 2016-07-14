@@ -152,23 +152,16 @@ bool NmeaMulticastUdp::recvString(std::string& sourceId, std::string& nmea) {
 	if (len > 0) {
 		if (memcmp(pimpl->readbuffer, DatagramHeader, sizeof(DatagramHeader))
 				== 0) {
+			ret = true;
 			std::string nmeaBlocks(&pimpl->readbuffer[sizeof(DatagramHeader)], len - sizeof(DatagramHeader));
-			std::vector<std::string> nmeaBlocksList;
-
 			const boost::char_separator<char> sep("\\\r\n");
 			const boost::tokenizer<boost::char_separator<char>> t(nmeaBlocks.begin(), nmeaBlocks.end(), sep);
 
-			int count = 0;
-			for (auto& token : t)
-			{
-				if (count == 0)
-				{
-					// FIXME: Se asume que la cadena es "s:ID0001,n:11*cc"
-					sourceId = token.substr(2, 6);
-				} else {
-					nmea = token;
-				}
-			}
+			// FIXME: Se asume que la cadena es "s:ID0001,n:11*cc"
+			boost::tokenizer<boost::char_separator<char>>::iterator itToken = t.begin();
+			sourceId = (*itToken).substr(2, 6);
+			++itToken;
+			nmea = (*itToken);
 		}
 	}
 	return ret;

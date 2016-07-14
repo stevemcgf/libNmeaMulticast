@@ -6,3 +6,6 @@ add_library(Multicast ${lib_SRC})
 target_include_directories(Multicast PUBLIC "src")
 
 target_link_libraries (Multicast ${Boost_LIBRARIES})
+
+add_executable(test.libMulticast test/test.cpp)
+target_link_libraries (test.libMulticast Multicast)
