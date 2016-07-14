@@ -226,3 +226,8 @@ int16_t NmeaMulticastUdp::calculateNmeaChecksum(const std::string& nmeaStr) {
 	}
 	return checksum;
 }
+
+void NmeaMulticastUdp::setListener(std::shared_ptr<NmeaMulticastUdpListener> listener)
+{
+	pimpl->listener = listener;
+}
