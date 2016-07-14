@@ -174,6 +174,14 @@ bool NmeaMulticastUdp::recvString(std::string& sourceId, std::string& nmea) {
 	return ret;
 }
 
+void NmeaMulticastUdp::setListener(std::shared_ptr<NmeaMulticastUdpListener> listener) {
+	pimpl->listener = listener;
+}
+
+void NmeaMulticastUdp::unsetListener() {
+	pimpl->listener.reset();
+}
+
 bool NmeaMulticastUdp::startListening() {
 	Dout(dbg_multicast, "NmeaMulticastUdp::startListening >>>>");
 	bool ret = false;
@@ -225,9 +233,4 @@ int16_t NmeaMulticastUdp::calculateNmeaChecksum(const std::string& nmeaStr) {
 		checksum ^= c;
 	}
 	return checksum;
-}
-
-void NmeaMulticastUdp::setListener(std::shared_ptr<NmeaMulticastUdpListener> listener)
-{
-	pimpl->listener = listener;
 }
