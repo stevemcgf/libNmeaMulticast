@@ -1,11 +1,18 @@
 cmake_minimum_required(VERSION 2.8)
 
-file(GLOB lib_SRC "src/*.h" "src/*.cpp" "src/internal/*.h" "src/internal/*.cpp")
+file(GLOB lib_SRC "include/*.h" "src/*.h" "src/*.cpp")
 
-add_library(Multicast ${lib_SRC})
-target_include_directories(Multicast PUBLIC "src")
+add_compile_options(-std=c++11)
+add_compile_options(-DBOOST_LOG_DYN_LINK)
 
-target_link_libraries (Multicast ${Boost_LIBRARIES})
+find_package(Boost 1.55 REQUIRED COMPONENTS log system thread)
 
-add_executable(test.libMulticast test/test.cpp)
-target_link_libraries (test.libMulticast Multicast)
+include_directories(${Boost_INCLUDE_DIRS})
+
+add_library(NmeaMulticast ${lib_SRC})
+target_include_directories(NmeaMulticast PUBLIC "include")
+
+target_link_libraries (NmeaMulticast ${Boost_LIBRARIES})
+
+add_executable(test.libNmeaMulticast test/test.cpp)
+target_link_libraries (test.libNmeaMulticast NmeaMulticast)

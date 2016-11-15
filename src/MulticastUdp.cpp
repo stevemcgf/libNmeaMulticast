@@ -14,8 +14,7 @@
 #include <sys/types.h>
 
 #include <boost/thread.hpp>
-#include "debug.hpp"
-#include "error.hpp"
+#include <boost/log/trivial.hpp>
 
 using namespace boost;
 
@@ -71,6 +70,7 @@ MulticastUdp::MulticastUdp(const std::string& interfaceAddress,
 	if (((multicastmask.s_addr & 0x000000ff)
 			& (pimpl->multicast.sin_addr.s_addr & 0x000000ff))
 			!= (multicastmask.s_addr & 0x000000ff)) {
+		BOOST_LOG_TRIVIAL(error) << "Dirección Multicast no válida.";
 		throw std::invalid_argument(
 				"Se debe especificar una dirección Multicast");
 	}
@@ -78,8 +78,8 @@ MulticastUdp::MulticastUdp(const std::string& interfaceAddress,
 	pimpl->timeout.tv_sec = timeout / 1000;
 	pimpl->timeout.tv_usec = (timeout % 1000) * 1000;
 
-	Dout(dbg_multicast,
-			"MulticastUdp InterfaceAddress = " << interfaceAddress << " MulticastAddress = " << multicastAddress << ":" << multicastPort);
+	BOOST_LOG_TRIVIAL(info) << "MulticastUdp InterfaceAddress = " << interfaceAddress << " MulticastAddress = " << multicastAddress << ":" << multicastPort;
+
 }
 
 MulticastUdp::~MulticastUdp() {
@@ -91,7 +91,7 @@ MulticastUdp::~MulticastUdp() {
 bool MulticastUdp::open() {
 	bool ret = false;
 
-	Dout(dbg_multicast, "MulticastUdp open()");
+	BOOST_LOG_TRIVIAL(trace) << "MulticastUdp open()";
 
 	if (pimpl->fd < 0) {
 		int socket_temp = socket(AF_INET, SOCK_DGRAM, 0);
@@ -101,7 +101,7 @@ bool MulticastUdp::open() {
 
 			if (setsockopt(pimpl->fd, SOL_SOCKET, SO_REUSEADDR, &yes,
 					sizeof(yes)) != 0) {
-				PErr("No se pudo establecer REUSEADDR");
+				BOOST_LOG_TRIVIAL(error) << ("No se pudo establecer REUSEADDR");
 			}
 
 			int bindret;
@@ -117,17 +117,17 @@ bool MulticastUdp::open() {
 				group.imr_multiaddr = pimpl->multicast.sin_addr;
 				group.imr_ifindex = 0;
 
-				Dout(dbg_multicast, "Configurando IP_ADD_MEMBERSHIP");
+				BOOST_LOG_TRIVIAL(debug) << "Configurando IP_ADD_MEMBERSHIP";
 				if (setsockopt(pimpl->fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &group,
 						sizeof(group)) != 0) {
-					PErr("No se pudo suscribir a la direccion multicast");
+					BOOST_LOG_TRIVIAL(error) << "No se pudo suscribir a la direccion multicast";
 				}
 
-				Dout(dbg_multicast, "Habilita IP_MULTICAST_LOOP");
+				BOOST_LOG_TRIVIAL(debug) << "Habilita IP_MULTICAST_LOOP";
 				char loop = 1;
 				if (setsockopt(pimpl->fd, IPPROTO_IP, IP_MULTICAST_LOOP, &loop,
 						sizeof(loop)) != 0) {
-					PErr("No se pudo Habilitar loop");
+					BOOST_LOG_TRIVIAL(error) << "No se pudo Habilitar loop";
 				}
 
 				uint rcvbuffer = MAX_BUFFER_SIZE;
@@ -148,22 +148,21 @@ bool MulticastUdp::open() {
 					sndbuffer = sndbuffer >> 1;
 				}
 
-				Dout(dbg_multicast,
-						"UdpSocket::open rcvbuffer = " << rcvbuffer << "b sndbuffer = " << sndbuffer << "b");
+				BOOST_LOG_TRIVIAL(debug) << "UdpSocket::open rcvbuffer = " << rcvbuffer << "b sndbuffer = " << sndbuffer << "b";
 
 				ret = true;
 			} else {
-				PErr("Error al hacer bind '" << strerror(errno) << "'");
+				BOOST_LOG_TRIVIAL(error) << "Error al hacer bind '" << strerror(errno) << "'";
 			}
 		} else {
-			PErr("No se pudo crear socket");
+			BOOST_LOG_TRIVIAL(error) << "No se pudo crear socket";
 		}
 	} else {
-		PErr("Socket ya abierto");
+		BOOST_LOG_TRIVIAL(error) << "Socket ya abierto";
 	}
 
 	if (false == ret && pimpl->fd >= 0) {
-		Dout(dbg_multicast, "Error al abrir socket. Cerrando");
+		BOOST_LOG_TRIVIAL(error) << "Error al abrir socket. Cerrando";
 		::close(pimpl->fd);
 		pimpl->fd = -1;
 	}
@@ -174,7 +173,7 @@ bool MulticastUdp::open() {
 bool MulticastUdp::close() {
 	bool ret = false;
 
-	Dout(dbg_multicast, "UdpSocket close()");
+	BOOST_LOG_TRIVIAL(trace) << "UdpSocket close()";
 
 	if (isOpen()) {
 		if (pimpl->active) {
@@ -183,7 +182,7 @@ bool MulticastUdp::close() {
 		::close(pimpl->fd);
 		pimpl->fd = -1;
 		ret = true;
-		Dout(dbg_multicast, "Socket cerrado");
+		BOOST_LOG_TRIVIAL(debug) << "Socket cerrado";
 	}
 
 	return ret;
@@ -227,7 +226,7 @@ void MulticastUdp::unsetListener() {
 }
 
 void MulticastUdp::startListening() {
-	Dout(dbg_multicast, "MulticastUdp startListening()");
+	BOOST_LOG_TRIVIAL(trace) << "MulticastUdp startListening()";
 	if (!pimpl->active && pimpl->listener) {
 		if (!isOpen()) {
 			this->open();
@@ -235,16 +234,16 @@ void MulticastUdp::startListening() {
 		pimpl->active = true;
 		thread t(bind(&MulticastUdp::runListener, this));
 		pimpl->listenerThread.swap(t);
-		Dout(dbg_serial, "MulticastUdp: inició hilo");
+		BOOST_LOG_TRIVIAL(debug) << "MulticastUdp: inició hilo";
 	}
 }
 
 void MulticastUdp::stopListening() {
-	Dout(dbg_multicast, "MulticastUdp stopListening()");
+	BOOST_LOG_TRIVIAL(trace) << "MulticastUdp stopListening()";
 	if (pimpl->active) {
 		pimpl->active = false;
 		pimpl->listenerThread.join();
-		Dout(dbg_serial, "MulticastUdp: se liberó hilo");
+		BOOST_LOG_TRIVIAL(debug) << "MulticastUdp: se liberó hilo";
 	}
 }
 
