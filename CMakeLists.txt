@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 
-file(GLOB lib_SRC "include/*.h" "src/*.h" "src/*.cpp")
+file(GLOB lib_SRC "include/*.h" "src/*.cpp")
 
 add_compile_options(-std=c++11)
 add_compile_options(-DBOOST_LOG_DYN_LINK)
