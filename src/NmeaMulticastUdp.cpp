@@ -16,6 +16,12 @@
 #include <boost/thread.hpp>
 #include <boost/log/trivial.hpp>
 
+#ifdef NM_DEBUG
+#define LOG_MESSAGE(lvl) BOOST_LOG_TRIVIAL(lvl)
+#else
+#define LOG_MESSAGE(lvl) if (false) BOOST_LOG_TRIVIAL(lvl)
+#endif
+
 struct EnumClassHash {
 	template<typename T>
 	std::size_t operator()(T t) const {
@@ -174,7 +180,7 @@ void NmeaMulticastUdp::unsetListener() {
 }
 
 bool NmeaMulticastUdp::startListening() {
-	BOOST_LOG_TRIVIAL(trace) << "NmeaMulticastUdp::startListening >>>>";
+	LOG_MESSAGE(trace) << "NmeaMulticastUdp::startListening >>>>";
 	bool ret = false;
 
 	if (!pimpl->active && pimpl->listener) {
@@ -184,22 +190,22 @@ bool NmeaMulticastUdp::startListening() {
 
 			thread t(bind(&NmeaMulticastUdp::runListener, this));
 			pimpl->listenerThread.swap(t);
-			BOOST_LOG_TRIVIAL(debug) << "NmeaMulticastUdp::startListening se inicia hilo";
+			LOG_MESSAGE(debug) << "NmeaMulticastUdp::startListening se inicia hilo";
 		}
 	}
-	BOOST_LOG_TRIVIAL(trace) << "NmeaMulticastUdp::startListening <<<<";
+	LOG_MESSAGE(trace) << "NmeaMulticastUdp::startListening <<<<";
 	return ret;
 }
 
 void NmeaMulticastUdp::stopListening() {
-	BOOST_LOG_TRIVIAL(trace) << "NmeaMulticastUdp::stopListening >>>>";
+	LOG_MESSAGE(trace) << "NmeaMulticastUdp::stopListening >>>>";
 	if (pimpl->active) {
 		pimpl->active = false;
 		pimpl->listenerThread.join();
 		pimpl->multicast->close();
-		BOOST_LOG_TRIVIAL(debug) << "NmeaMulticastUdp::stopListening: se liberó hilo";
+		LOG_MESSAGE(debug) << "NmeaMulticastUdp::stopListening: se liberó hilo";
 	}
-	BOOST_LOG_TRIVIAL(trace) << "NmeaMulticastUdp::stopListening <<<<";
+	LOG_MESSAGE(trace) << "NmeaMulticastUdp::stopListening <<<<";
 }
 
 void NmeaMulticastUdp::runListener() {

@@ -16,3 +16,5 @@ target_link_libraries (NmeaMulticast ${Boost_LIBRARIES})
 
 add_executable(test.libNmeaMulticast test/test.cpp)
 target_link_libraries (test.libNmeaMulticast NmeaMulticast)
+
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DNM_DEBUG")
