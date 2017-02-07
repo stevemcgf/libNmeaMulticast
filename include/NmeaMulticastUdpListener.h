@@ -11,7 +11,7 @@
 
 class NmeaMulticastUdpListener {
 public:
-	virtual ~NmeaMulticastUdpListener() = 0;
+	virtual ~NmeaMulticastUdpListener();
     virtual void onStringAvailable(const std::string& sourceId, const std::string& nmea) = 0;
     virtual void onTimeout() = 0;
     virtual void onConnectionError() = 0;

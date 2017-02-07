@@ -12,7 +12,7 @@
 
 class MulticastUdpListener {
 public:
-	virtual ~MulticastUdpListener() = 0;
+	virtual ~MulticastUdpListener();
     virtual void onDataAvailable(const char *data, size_t size) = 0;
     virtual void onTimeout() = 0;
     virtual void onConnectionError() = 0;
