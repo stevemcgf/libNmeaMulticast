@@ -1,8 +1,6 @@
-/*
- * NmeaMulticastUdp.cpp
- *
- *  Created on: Jul 10, 2016
- *      Author: steve
+/**
+ *	@file NmeaMulticastUdp.cpp
+ *	@brief Implementation of the generic MulticastUdp class
  */
 
 #include "NmeaMulticastUdp.h"
@@ -37,7 +35,15 @@ std::unordered_map<NmeaTrasmissionGroupEnum, std::pair<std::string, int>,
 		NmeaTransmissionGroup_VDRD, { "239.192.0.5", 60005 } }, {
 		NmeaTransmissionGroup_RCOM, { "239.192.0.6", 60006 } }, {
 		NmeaTransmissionGroup_TIME, { "239.192.0.7", 60007 } }, {
-		NmeaTransmissionGroup_PROP, { "239.192.0.8", 60008 } } };
+		NmeaTransmissionGroup_PROP, { "239.192.0.8", 60008 } }, {
+		NmeaTransmissionGroup_USR1, { "239.192.0.9", 60009 } }, {
+		NmeaTransmissionGroup_USR2, { "239.192.0.10", 60010 } }, {
+		NmeaTransmissionGroup_USR3, { "239.192.0.11", 60011 } }, {
+		NmeaTransmissionGroup_USR4, { "239.192.0.12", 60012 } }, {
+		NmeaTransmissionGroup_USR5, { "239.192.0.13", 60013 } }, {
+		NmeaTransmissionGroup_USR6, { "239.192.0.14", 60014 } }, {
+		NmeaTransmissionGroup_USR7, { "239.192.0.15", 60015 } }, {
+		NmeaTransmissionGroup_USR8, { "239.192.0.16", 60016 } } };
 
 using namespace boost;
 
@@ -143,26 +149,27 @@ bool NmeaMulticastUdp::sendString(const std::string& sourceId,
 	pimpl->writebuffer[pointer] = '\n';
 	++pointer;
 
-	return (pimpl->multicast->send(
-			asio::const_buffer(pimpl->writebuffer, pointer)) > 0);
+	return (pimpl->multicast->send(pimpl->writebuffer, pointer) > 0);
 }
 
 bool NmeaMulticastUdp::recvString(std::string& sourceId, std::string& nmea) {
 	bool ret = false;
 
-	int len = pimpl->multicast->recv(
-			asio::mutable_buffer(pimpl->readbuffer, multicastBufferSize));
+	int len = pimpl->multicast->recv(pimpl->readbuffer, multicastBufferSize);
 
 	if (len > 0) {
 		if (memcmp(pimpl->readbuffer, DatagramHeader, sizeof(DatagramHeader))
 				== 0) {
 			ret = true;
-			std::string nmeaBlocks(&pimpl->readbuffer[sizeof(DatagramHeader)], len - sizeof(DatagramHeader));
+			std::string nmeaBlocks(&pimpl->readbuffer[sizeof(DatagramHeader)],
+					len - sizeof(DatagramHeader));
 			const boost::char_separator<char> sep("\\\r\n");
-			const boost::tokenizer<boost::char_separator<char>> t(nmeaBlocks.begin(), nmeaBlocks.end(), sep);
+			const boost::tokenizer<boost::char_separator<char>> t(
+					nmeaBlocks.begin(), nmeaBlocks.end(), sep);
 
 			// FIXME: Se asume que la cadena es "s:ID0001,n:11*cc"
-			boost::tokenizer<boost::char_separator<char>>::iterator itToken = t.begin();
+			boost::tokenizer<boost::char_separator<char>>::iterator itToken =
+					t.begin();
 			sourceId = (*itToken).substr(2, 6);
 			++itToken;
 			nmea = (*itToken);
@@ -171,7 +178,8 @@ bool NmeaMulticastUdp::recvString(std::string& sourceId, std::string& nmea) {
 	return ret;
 }
 
-void NmeaMulticastUdp::setListener(std::shared_ptr<NmeaMulticastUdpListener> listener) {
+void NmeaMulticastUdp::setListener(
+		std::shared_ptr<NmeaMulticastUdpListener> listener) {
 	pimpl->listener = listener;
 }
 
@@ -180,7 +188,7 @@ void NmeaMulticastUdp::unsetListener() {
 }
 
 bool NmeaMulticastUdp::startListening() {
-	LOG_MESSAGE(trace) << "NmeaMulticastUdp::startListening >>>>";
+	LOG_MESSAGE(trace)<< "NmeaMulticastUdp::startListening >>>>";
 	bool ret = false;
 
 	if (!pimpl->active && pimpl->listener) {
@@ -198,7 +206,7 @@ bool NmeaMulticastUdp::startListening() {
 }
 
 void NmeaMulticastUdp::stopListening() {
-	LOG_MESSAGE(trace) << "NmeaMulticastUdp::stopListening >>>>";
+	LOG_MESSAGE(trace)<< "NmeaMulticastUdp::stopListening >>>>";
 	if (pimpl->active) {
 		pimpl->active = false;
 		pimpl->listenerThread.join();
@@ -213,8 +221,7 @@ void NmeaMulticastUdp::runListener() {
 	std::string nmeaStr;
 
 	while (pimpl->active) {
-		if (recvString(sourceId, nmeaStr))
-		{
+		if (recvString(sourceId, nmeaStr)) {
 			pimpl->listener->onStringAvailable(sourceId, nmeaStr);
 		} else {
 			pimpl->listener->onTimeout();

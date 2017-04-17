@@ -1,8 +1,6 @@
-/*
- * MulticastUdp.cpp
- *
- *  Created on: Jul 9, 2016
- *      Author: steve
+/**
+ *	@file MulticastUdp.cpp
+ *	@brief Implementation of the generic MulticastUdp class
  */
 
 #include "MulticastUdp.h"
@@ -76,7 +74,7 @@ MulticastUdp::MulticastUdp(const std::string& interfaceAddress,
 	if (((multicastmask.s_addr & 0x000000ff)
 			& (pimpl->multicast.sin_addr.s_addr & 0x000000ff))
 			!= (multicastmask.s_addr & 0x000000ff)) {
-		LOG_MESSAGE(error) << "Dirección Multicast no válida.";
+		LOG_MESSAGE(error)<< "Dirección Multicast no válida.";
 		throw std::invalid_argument(
 				"Se debe especificar una dirección Multicast");
 	}
@@ -84,7 +82,7 @@ MulticastUdp::MulticastUdp(const std::string& interfaceAddress,
 	pimpl->timeout.tv_sec = timeout / 1000;
 	pimpl->timeout.tv_usec = (timeout % 1000) * 1000;
 
-	LOG_MESSAGE(info) << "MulticastUdp InterfaceAddress = " << interfaceAddress << " MulticastAddress = " << multicastAddress << ":" << multicastPort;
+	LOG_MESSAGE(info)<< "MulticastUdp InterfaceAddress = " << interfaceAddress << " MulticastAddress = " << multicastAddress << ":" << multicastPort;
 
 }
 
@@ -97,7 +95,7 @@ MulticastUdp::~MulticastUdp() {
 bool MulticastUdp::open() {
 	bool ret = false;
 
-	LOG_MESSAGE(trace) << "MulticastUdp open()";
+	LOG_MESSAGE(trace)<< "MulticastUdp open()";
 
 	if (pimpl->fd < 0) {
 		int socket_temp = socket(AF_INET, SOCK_DGRAM, 0);
@@ -107,7 +105,7 @@ bool MulticastUdp::open() {
 
 			if (setsockopt(pimpl->fd, SOL_SOCKET, SO_REUSEADDR, &yes,
 					sizeof(yes)) != 0) {
-				LOG_MESSAGE(error) << ("No se pudo establecer REUSEADDR");
+				LOG_MESSAGE(error)<< ("No se pudo establecer REUSEADDR");
 			}
 
 			int bindret;
@@ -123,17 +121,17 @@ bool MulticastUdp::open() {
 				group.imr_multiaddr = pimpl->multicast.sin_addr;
 				group.imr_ifindex = 0;
 
-				LOG_MESSAGE(debug) << "Configurando IP_ADD_MEMBERSHIP";
+				LOG_MESSAGE(debug)<< "Configurando IP_ADD_MEMBERSHIP";
 				if (setsockopt(pimpl->fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &group,
 						sizeof(group)) != 0) {
-					LOG_MESSAGE(error) << "No se pudo suscribir a la direccion multicast";
+					LOG_MESSAGE(error)<< "No se pudo suscribir a la direccion multicast";
 				}
 
-				LOG_MESSAGE(debug) << "Habilita IP_MULTICAST_LOOP";
+				LOG_MESSAGE(debug)<< "Habilita IP_MULTICAST_LOOP";
 				char loop = 1;
 				if (setsockopt(pimpl->fd, IPPROTO_IP, IP_MULTICAST_LOOP, &loop,
 						sizeof(loop)) != 0) {
-					LOG_MESSAGE(error) << "No se pudo Habilitar loop";
+					LOG_MESSAGE(error)<< "No se pudo Habilitar loop";
 				}
 
 				uint rcvbuffer = MAX_BUFFER_SIZE;
@@ -154,11 +152,11 @@ bool MulticastUdp::open() {
 					sndbuffer = sndbuffer >> 1;
 				}
 
-				LOG_MESSAGE(debug) << "UdpSocket::open rcvbuffer = " << rcvbuffer << "b sndbuffer = " << sndbuffer << "b";
+				LOG_MESSAGE(debug)<< "UdpSocket::open rcvbuffer = " << rcvbuffer << "b sndbuffer = " << sndbuffer << "b";
 
 				ret = true;
 			} else {
-				LOG_MESSAGE(error) << "Error al hacer bind '" << strerror(errno) << "'";
+				LOG_MESSAGE(error)<< "Error al hacer bind '" << strerror(errno) << "'";
 			}
 		} else {
 			LOG_MESSAGE(error) << "No se pudo crear socket";
@@ -168,7 +166,7 @@ bool MulticastUdp::open() {
 	}
 
 	if (false == ret && pimpl->fd >= 0) {
-		LOG_MESSAGE(error) << "Error al abrir socket. Cerrando";
+		LOG_MESSAGE(error)<< "Error al abrir socket. Cerrando";
 		::close(pimpl->fd);
 		pimpl->fd = -1;
 	}
@@ -179,7 +177,7 @@ bool MulticastUdp::open() {
 bool MulticastUdp::close() {
 	bool ret = false;
 
-	LOG_MESSAGE(trace) << "UdpSocket close()";
+	LOG_MESSAGE(trace)<< "UdpSocket close()";
 
 	if (isOpen()) {
 		if (pimpl->active) {
@@ -188,7 +186,7 @@ bool MulticastUdp::close() {
 		::close(pimpl->fd);
 		pimpl->fd = -1;
 		ret = true;
-		LOG_MESSAGE(debug) << "Socket cerrado";
+		LOG_MESSAGE(debug)<< "Socket cerrado";
 	}
 
 	return ret;
@@ -198,13 +196,12 @@ bool MulticastUdp::isOpen() {
 	return (pimpl->fd >= 0);
 }
 
-int MulticastUdp::send(boost::asio::const_buffer buffer) {
-	return ::sendto(pimpl->fd, asio::buffer_cast<const void *>(buffer),
-			asio::buffer_size(buffer), 0, (struct sockaddr *) &pimpl->multicast,
-			sizeof(pimpl->multicast));
+int MulticastUdp::send(const void* buffer, std::size_t size) {
+	return ::sendto(pimpl->fd, buffer, size, 0,
+			(struct sockaddr *) &pimpl->multicast, sizeof(pimpl->multicast));
 }
 
-int MulticastUdp::recv(asio::mutable_buffer buffer) {
+int MulticastUdp::recv(void* buffer, std::size_t size) {
 	static fd_set readset;
 	FD_ZERO(&readset);
 	FD_SET(pimpl->fd, &readset);
@@ -214,8 +211,7 @@ int MulticastUdp::recv(asio::mutable_buffer buffer) {
 	int ret = select(pimpl->fd + 1, &readset, NULL, NULL, &timeout);
 
 	if (ret > 0) {
-		ret = ::recvfrom(pimpl->fd, asio::buffer_cast<void *>(buffer),
-				asio::buffer_size(buffer), 0, NULL, NULL);
+		ret = ::recvfrom(pimpl->fd, buffer, size, 0, NULL, NULL);
 	} else {
 		ret = -2;
 	}
@@ -232,7 +228,7 @@ void MulticastUdp::unsetListener() {
 }
 
 void MulticastUdp::startListening() {
-	LOG_MESSAGE(trace) << "MulticastUdp startListening()";
+	LOG_MESSAGE(trace)<< "MulticastUdp startListening()";
 	if (!pimpl->active && pimpl->listener) {
 		if (!isOpen()) {
 			this->open();
@@ -245,7 +241,7 @@ void MulticastUdp::startListening() {
 }
 
 void MulticastUdp::stopListening() {
-	LOG_MESSAGE(trace) << "MulticastUdp stopListening()";
+	LOG_MESSAGE(trace)<< "MulticastUdp stopListening()";
 	if (pimpl->active) {
 		pimpl->active = false;
 		pimpl->listenerThread.join();
@@ -254,14 +250,12 @@ void MulticastUdp::stopListening() {
 }
 
 void MulticastUdp::runListener() {
-	asio::mutable_buffer b(pimpl->readBuffer, MAX_BUFFER_SIZE);
 
 	while (pimpl->active) {
-		int ret = recv(b);
+		int ret = recv(pimpl->readBuffer, MAX_BUFFER_SIZE);
 
 		if (ret > 0) {
-			pimpl->listener->onDataAvailable(asio::buffer_cast<const char *>(b),
-					ret);
+			pimpl->listener->onDataAvailable(pimpl->readBuffer, ret);
 		} else if (ret == -2) {
 			pimpl->listener->onTimeout();
 		} else {
