@@ -4,7 +4,7 @@ This library is a C++ implementation of a NMEA Ethernet interconnection as defin
 
 ## Description
 
-This library allows to communicate using multicast. Have support for talking and listening to NMEA ethernet devices.
+This library allows to communicate using multicast. Have support for talking and listening to NMEA ethernet devices. Example usage available in the test code. **test.cpp**.
 
 ## Motivation
 
