@@ -41,6 +41,12 @@ target_include_directories(NmeaMulticast PUBLIC "include")
 
 target_link_libraries (NmeaMulticast ${Boost_LIBRARIES})
 
+if (NOT "${VERSION_STRING}" STREQUAL "")
+
+	set_target_properties(NmeaParser PROPERTIES VERSION ${VERSION_STRING} SOVERSION ${VERSION_MAJOR})
+	
+endif (NOT "${VERSION_STRING}" STREQUAL "")
+
 add_executable(test.libNmeaMulticast test/test.cpp)
 target_link_libraries (test.libNmeaMulticast NmeaMulticast)
 
