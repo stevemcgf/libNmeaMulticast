@@ -30,8 +30,9 @@ file(GLOB lib_SRC "include/*.h" "src/*.cpp")
 
 add_compile_options(-std=c++11)
 add_compile_options(-DBOOST_LOG_DYN_LINK)
+add_compile_options(-include ${CMAKE_CURRENT_BINARY_DIR}/Version.h)
 
-find_package(Boost 1.55 REQUIRED COMPONENTS log system thread)
+find_package(Boost 1.54 REQUIRED COMPONENTS log system thread)
 
 include_directories(${Boost_INCLUDE_DIRS})
 
